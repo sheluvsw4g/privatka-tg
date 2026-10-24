@@ -1593,7 +1593,6 @@ void IDPrivateSynchronizeTextInputTraits(
     for (NSString *selectorName in @[
              @"setEnablesReturnKeyAutomatically:",
              @"setSecureTextEntry:",
-             @"setAllowsNumberPadPopover:",
          ]) {
         IDPrivateRequireTextInputTraitsSignature(
             traits, selectorName, @encode(void), @[boolType]);
@@ -1645,7 +1644,13 @@ void IDPrivateSynchronizeTextInputTraits(
         @selector(setAllowedWritingToolsResultOptions:),
         source.allowedWritingToolsResultOptions);
     ID_SET_OBJECT_TRAIT("ConversationContext", source.conversationContext);
-    ID_SET_BOOL_TRAIT("AllowsNumberPadPopover", source.allowsNumberPadPopover);
+    if ([traits respondsToSelector:NSSelectorFromString(@"setAllowsNumberPadPopover:")]) {
+        BOOL allowsNumberPadPopover = NO;
+        if ([source respondsToSelector:NSSelectorFromString(@"allowsNumberPadPopover")]) {
+            allowsNumberPadPopover = ((BOOL (*)(id, SEL))objc_msgSend)(source, NSSelectorFromString(@"allowsNumberPadPopover"));
+        }
+        ID_SET_BOOL_TRAIT("AllowsNumberPadPopover", allowsNumberPadPopover);
+    }
 
 #undef ID_SET_INTEGER_TRAIT
 #undef ID_SET_BOOL_TRAIT
