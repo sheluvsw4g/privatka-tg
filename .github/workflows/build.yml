@@ -40,6 +40,15 @@ jobs:
           sudo mkdir -p /Users/Shared
           cp -R "$GITHUB_WORKSPACE" /Users/Shared/
           mv /Users/Shared/$(basename "$GITHUB_WORKSPACE") /Users/Shared/telegram-ios
+          mkdir -p /Users/Shared/telegram-bazel-cache
+
+      - name: Cache Bazel Build Cache
+        uses: actions/cache@v4
+        with:
+          path: /Users/Shared/telegram-bazel-cache
+          key: ${{ runner.os }}-telegram-bazel-${{ hashFiles('versions.json', 'MODULE.bazel.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-telegram-bazel-
 
       - name: Build Telegram iOS App via Bazel
         run: |
@@ -48,6 +57,7 @@ jobs:
 
           SOURCE_DIR=/Users/Shared/telegram-ios
           BAZEL_USER_ROOT="/private/var/tmp/_bazel_containerhost"
+          CACHE_DIR="/Users/Shared/telegram-bazel-cache"
 
           cd "$SOURCE_DIR"
 
@@ -72,6 +82,7 @@ jobs:
             --overrideXcodeVersion \
             --overrideBazelVersion \
             --bazelUserRoot="$BAZEL_USER_ROOT" \
+            --cacheDir="$CACHE_DIR" \
             build \
             --configurationPath="build-system/appstore-configuration.json" \
             --codesigningInformationPath=build-system/fake-codesigning \
