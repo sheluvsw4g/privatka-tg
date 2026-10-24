@@ -1,0 +1,124 @@
+name: Build Telegram IPA (Free Apple ID)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    name: Build Telegram IPA (Device, Free Apple ID)
+    runs-on: macos-15
+    timeout-minutes: 120
+
+    env:
+      # === ЗАПОЛНИ ЭТИ СЕКРЕТЫ В GITHUB SETTINGS ===
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+      TEAM_ID: ${{ secrets.TEAM_ID }}
+      BUNDLE_ID: ${{ secrets.BUNDLE_ID }}
+      API_ID: ${{ secrets.API_ID }}
+      API_HASH: ${{ secrets.API_HASH }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Validate secrets
+        run: |
+          if [ -z "$APPLE_ID" ] || [ -z "$APPLE_ID_PASSWORD" ] || [ -z "$TEAM_ID" ] || [ -z "$BUNDLE_ID" ] || [ -z "$API_ID" ] || [ -z "$API_HASH" ]; then
+            echo "❌ Missing secrets! Add in Settings → Secrets and variables → Actions:"
+            echo "  APPLE_ID, APPLE_ID_PASSWORD, TEAM_ID, BUNDLE_ID, API_ID, API_HASH"
+            exit 1
+          fi
+          echo "✅ All secrets present"
+
+      - name: Setup Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app
+          xcodebuild -version
+
+      - name: Install Bazel
+        uses: bazelbuild/setup-bazelisk@v1
+        with:
+          bazelisk-version: v1.25.0
+
+      - name: Cache Bazel
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazel
+            ~/Library/Caches/bazel
+          key: bazel-${{ runner.os }}-${{ hashFiles('**/MODULE.bazel.lock', '**/BUILD.bazel', '**/*.bzl') }}
+          restore-keys: |
+            bazel-${{ runner.os }}-
+
+      - name: Create development configuration
+        run: |
+          cat > build-config.json <<EOF
+          {
+            "bundle_id": "$BUNDLE_ID",
+            "api_id": "$API_ID",
+            "api_hash": "$API_HASH",
+            "team_id": "$TEAM_ID",
+            "app_center_id": "0",
+            "is_internal_build": "true",
+            "is_appstore_build": "false",
+            "appstore_id": "0",
+            "app_specific_url_scheme": "tg",
+            "premium_iap_product_id": "",
+            "enable_siri": false,
+            "enable_icloud": false
+          }
+          EOF
+          cat build-config.json
+
+      - name: Build Telegram (Device, Xcode-managed signing)
+        env:
+          TELEGRAM_GIT_CODESIGNING_REPOSITORY: ""
+        run: |
+          python3 build-system/Make/Make.py build \
+            --waitForLock \
+            --configurationPath="build-config.json" \
+            --configuration=release_arm64 \
+            --gitCodesigningType=adhoc \
+            --embedWatchApp \
+            --watchApiId=0 \
+            --watchApiHash=0
+
+      - name: Find built IPA
+        run: |
+          find . -name "*.ipa" -type f 2>/dev/null | head -5
+          IPA_PATH=$(find . -name "*.ipa" -type f 2>/dev/null | head -1)
+          echo "IPA_PATH=$IPA_PATH" >> $GITHUB_ENV
+
+      - name: Upload Telegram.ipa
+        if: env.IPA_PATH != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: Telegram-IPA-Sideload
+          path: ${{ env.IPA_PATH }}
+          retention-days: 7
+
+      - name: Upload dSYMs
+        run: |
+          find . -name "*.dSYM" -o -name "*DSYMs.zip" 2>/dev/null | head -5
+          DSYM_PATH=$(find . -name "*DSYMs.zip" -type f 2>/dev/null | head -1)
+          if [ -n "$DSYM_PATH" ]; then
+            echo "DSYM_PATH=$DSYM_PATH" >> $GITHUB_ENV
+          fi
+
+      - name: Upload dSYMs artifact
+        if: env.DSYM_PATH != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: Telegram-DSYMs
+          path: ${{ env.DSYM_PATH }}
+          retention-days: 7
