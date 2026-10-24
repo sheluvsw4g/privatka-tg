@@ -828,6 +828,7 @@ static NSMutableDictionary<NSString *, TrustedWebRecord *> *trustedWebRecords() 
 #pragma clang diagnostic pop
 }
 
+#if 0 // iOS 26 APIs not available in current SDK (iOS 18.5)
 /*static void dumpViews(UIView *view, NSString *indent) {
     NSLog(@"%@%@", indent, [view debugDescription]);
     NSString *nextIndent = [indent stringByAppendingString:@"-"];
@@ -847,6 +848,7 @@ static NSMutableDictionary<NSString *, TrustedWebRecord *> *trustedWebRecords() 
         dumpViews(subview, nextIndent);
     }
 }*/
+#endif
 
 - (UIWindow * _Nullable)internalGetKeyboard {
     UIWindowScene *foundScene = nil;

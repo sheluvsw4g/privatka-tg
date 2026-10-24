@@ -456,28 +456,17 @@ public class GlassBackgroundView: UIView {
                 transition.setCornerRadius(layer: self.view.layer, cornerRadius: cornerRadius)
             case let .customRoundedRect(cornerRadii):
                 transition.setCornerRadius(layer: self.view.layer, cornerRadius: 0.0)
-                if #available(iOS 26.0, *) {
-                    transition.animateView {
-                        self.view.cornerConfiguration = .corners(
-                            topLeftRadius: .fixed(cornerRadii.topLeft),
-                            topRightRadius: .fixed(cornerRadii.topRight),
-                            bottomLeftRadius: .fixed(cornerRadii.bottomLeft),
-                            bottomRightRadius: .fixed(cornerRadii.bottomRight)
-                        )
-                    }
+                let maskLayer: CAShapeLayer
+                if let current = self.maskLayer {
+                    maskLayer = current
                 } else {
-                    let maskLayer: CAShapeLayer
-                    if let current = self.maskLayer {
-                        maskLayer = current
-                    } else {
-                        maskLayer = CAShapeLayer()
-                        maskLayer.fillColor = UIColor.black.cgColor
-                        self.maskLayer = maskLayer
-                        self.view.layer.mask = maskLayer
-                    }
-                    transition.setFrame(layer: maskLayer, frame: CGRect(origin: CGPoint(), size: size))
-                    transition.setShapeLayerPath(layer: maskLayer, path: GlassBackgroundView.generateRoundedRectPath(size: size, cornerRadii: cornerRadii))
+                    maskLayer = CAShapeLayer()
+                    maskLayer.fillColor = UIColor.black.cgColor
+                    self.maskLayer = maskLayer
+                    self.view.layer.mask = maskLayer
                 }
+                transition.setFrame(layer: maskLayer, frame: CGRect(origin: CGPoint(), size: size))
+                transition.setShapeLayerPath(layer: maskLayer, path: GlassBackgroundView.generateRoundedRectPath(size: size, cornerRadii: cornerRadii))
             }
         }
     }
@@ -569,38 +558,18 @@ public class GlassBackgroundView: UIView {
     public static var useCustomGlassImpl: Bool = false
     
     public override init(frame: CGRect) {
-        if #available(iOS 26.0, *), !GlassBackgroundView.useCustomGlassImpl {
-            self.legacyView = nil
-            self.legacyHighlightContainerView = nil
-            self.legacyHighlightClippingContext = nil
-            
-            let glassEffect = UIGlassEffect(style: .regular)
-            glassEffect.isInteractive = false
-            let nativeView = UIVisualEffectView(effect: glassEffect)
-            self.nativeViewClippingContext = ClippingShapeContext(view: nativeView)
-            self.nativeView = nativeView
-            
-            let nativeParamsView = EffectSettingsContainerView(frame: CGRect())
-            self.nativeParamsView = nativeParamsView
-            
-            nativeParamsView.addSubview(nativeView)
-            
-            self.foregroundView = nil
-            self.shadowView = nil
-        } else {
-            self.legacyView = LegacyGlassView(frame: CGRect())
-            let legacyHighlightContainerView = UIView()
-            legacyHighlightContainerView.isUserInteractionEnabled = false
-            legacyHighlightContainerView.clipsToBounds = true
-            self.legacyHighlightContainerView = legacyHighlightContainerView
-            self.legacyHighlightClippingContext = ClippingShapeContext(view: legacyHighlightContainerView)
-            self.nativeView = nil
-            self.nativeViewClippingContext = nil
-            self.nativeParamsView = nil
-            self.foregroundView = UIImageView()
-            
-            self.shadowView = UIImageView()
-        }
+        self.legacyView = LegacyGlassView(frame: CGRect())
+        let legacyHighlightContainerView = UIView()
+        legacyHighlightContainerView.isUserInteractionEnabled = false
+        legacyHighlightContainerView.clipsToBounds = true
+        self.legacyHighlightContainerView = legacyHighlightContainerView
+        self.legacyHighlightClippingContext = ClippingShapeContext(view: legacyHighlightContainerView)
+        self.nativeView = nil
+        self.nativeViewClippingContext = nil
+        self.nativeParamsView = nil
+        self.foregroundView = UIImageView()
+        self.shadowView = UIImageView()
+    }
         
         self.maskContainerView = UIView()
         self.maskContainerView.backgroundColor = .white
@@ -820,6 +789,7 @@ public class GlassBackgroundView: UIView {
                 transition.setAlpha(view: foregroundView, alpha: isVisible ? 1.0 : 0.0)
             } else {
                 if let nativeView = self.nativeView {
+                    #if false // iOS 26 APIs not available in current SDK (iOS 18.5)
                     if #available(iOS 26.0, *) {
                         var glassEffect: UIGlassEffect?
                         
@@ -864,6 +834,7 @@ public class GlassBackgroundView: UIView {
                             }
                         }
                     }
+                    #endif
                 }
             }
         }
@@ -940,6 +911,7 @@ public final class GlassBackgroundContainerView: UIView {
 
     public init(spacing: CGFloat = 7.0) {
         self.spacing = spacing
+        #if false // iOS 26 APIs not available in current SDK (iOS 18.5)
         if #available(iOS 26.0, *), !GlassBackgroundView.useCustomGlassImpl {
             let effect = UIGlassContainerEffect()
             effect.spacing = spacing
@@ -952,10 +924,13 @@ public final class GlassBackgroundContainerView: UIView {
             
             self.legacyView = nil
         } else {
+        #endif
             self.nativeView = nil
             self.nativeParamsView = nil
             self.legacyView = ContentView()
+        #if false // iOS 26 APIs not available in current SDK (iOS 18.5)
         }
+        #endif
         
         super.init(frame: CGRect())
         

@@ -154,11 +154,15 @@ final class ContextMenuMorphDebugController: ViewController {
             foreground.view.addSubview(label)
             reference.addSubnode(foreground)
             let background: UIVisualEffectView
+            #if false // iOS 26 APIs not available in current SDK (iOS 18.5)
             if #available(iOS 26.0, *) {
                 background = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
             } else {
+            #endif
                 background = UIVisualEffectView(effect: UIBlurEffect(style: .regular))
+            #if false // iOS 26 APIs not available in current SDK (iOS 18.5)
             }
+            #endif
             background.frame = button.frame
             let maskContainer = UIView(frame: background.bounds)
             let mask = UIView(frame: index == 15 ? maskContainer.bounds.inset(by: UIEdgeInsets(top: 16, left: 0, bottom: 0, right: 0)) : maskContainer.bounds)
@@ -278,7 +282,11 @@ final class ContextMenuMorphDebugController: ViewController {
         label.textAlignment = .center
         foreground.view.addSubview(label)
         source.addSubnode(foreground)
+        #if false // iOS 26 APIs not available in current SDK (iOS 18.5)
         let background = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
+        #else
+        let background = UIVisualEffectView(effect: UIBlurEffect(style: .regular))
+        #endif
         background.frame = source.frame
         let mask = UIView(frame: background.bounds)
         mask.backgroundColor = .white
